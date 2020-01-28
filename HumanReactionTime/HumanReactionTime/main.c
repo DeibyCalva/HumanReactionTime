@@ -54,8 +54,7 @@ void initialize(void){
 	TCCR0A= (1<<WGM01) ;
 	Tiempo_espe=0;
 	PushState = NoPush;
-	state = 0; //progama inicia en 0
-	
+	state = 0; //progama inicia en 0	
 	
 	uart_init();
 	stdout = stdin = stderr = &uart_str; //envias un mensaje a la puerta serial
