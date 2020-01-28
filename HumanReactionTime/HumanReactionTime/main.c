@@ -13,7 +13,7 @@
 #include <avr/interrupt.h>
 #include <stdio.h>
 #include <avr/eeprom.h>
-// libreria  de comunicación serial
+// libreria  de comunicaciï¿½n serial
 #include "uart.h"
 #define begin {
 #define end   }
@@ -35,7 +35,7 @@ unsigned int Tiempo_espe ;						///tiempo de retardo
 int nAleat ;
 
 // Descriptor del archivo UART
-// putchar y getchar están en uart.c
+// putchar y getchar estï¿½n en uart.c
 FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 
 void initialize(void){
