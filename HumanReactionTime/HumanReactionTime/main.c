@@ -21,7 +21,7 @@
 #define NoPush 1 //no presionado
 #define MaybePush 2//puede que este precionado
 #define Pushed 3 //presionado
-#define MaybeNoPush 4//Puede que no este presionadao
+#define MaybeNoPush 4//Puede que no este presionado
 
 //Definir la lectura y escritura de a EEEPROM
 #define eeprom_true 0
