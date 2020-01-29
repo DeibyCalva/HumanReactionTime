@@ -40,8 +40,8 @@ FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 
 void initialize(void){
 	//configurar los puertos
-	DDRD = 0x00;			// todos los puertos DDRD como entrada
-	DDRC = 0xff;	 		// todos los puertos DDRC como salida
+	DDRD = 0x00;		// todos los puertos DDRD como entrada
+	DDRC = 0xff;	 	// todos los puertos DDRC como salida
 	//OCR0A=16000000/(64*1000)-1=249
 	//OCR0A: carga el valor hasta el cual se quiere que llegue el registro TCNT0 el el modo CTN
 	OCR0A = 249;
