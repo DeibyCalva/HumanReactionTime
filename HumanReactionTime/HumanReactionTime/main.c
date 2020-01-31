@@ -5,43 +5,45 @@
  * Author : Deiby Calva
  */ 
 
+//Putty: emulador de terminal, consola en serie aplicacion y la transferencia de archivos
 
-
-#define F_CPU 16000000UL         //Reloj master de 16000000
-#include <inttypes.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <stdio.h>
-#include <avr/eeprom.h>
-// libreria  de comunicaciï¿½n serial
-#include "uart.h"
+#define F_CPU 16000000UL   //Reloj master de 16000000
+#include <inttypes.h>     //utiliza si quieres usar nombres de tipos independientes de cpu como char(u_int8 es lo mismo que char)
+#include <avr/io.h>      //nombres lógicos de cada nombre de pin (OCR0A, OCIE0A)
+#include <avr/interrupt.h> //sólo dos macros para configurar ISR
+#include <stdio.h>        //archivos de cabecera para las interfaces en serie, getchar putchar
+#include <avr/eeprom.h>  //Es un tipo de memoria ROM que puede ser programada, borrada y reprogramada eléctricamente
+// libreria  de comunicación serial
+#include "uart.h"  // Transmisor receptor asincrono universal, controla los puertos y dispositivos en seri
 #define begin {
 #define end   }
-//State machine state names
+//nombres de los estados de las máquinas de estado
 #define NoPush 1 //no presionado
 #define MaybePush 2//puede que este precionado
 #define Pushed 3 //presionado
-#define MaybeNoPush 4//Puede que no este presionado
+#define MaybeNoPush 4//Puede que no este presionadao
 
 //Definir la lectura y escritura de a EEEPROM
 #define eeprom_true 0
 #define eeprom_data 1
 
-volatile unsigned char time1, time2, time3;		//contadores de tiempo
+volatile unsigned char time1, time2, time3;		//contadores de tiempo //estas variables deben ser compartidas 
 unsigned char PushState;						//estado de la maquina
-unsigned int time;								//timepo de lectuura del boton
+unsigned int time;								//timepo de lectuura del boton  // un valor de milisegundos desde el último reinicio
 unsigned int state;								//comprobar la maquina de estado
 unsigned int Tiempo_espe ;						///tiempo de retardo
 int nAleat ;
 
 // Descriptor del archivo UART
-// putchar y getchar estï¿½n en uart.c
+//La función getchar recibe un carácter, mientras que la función putchar imprime un carácter.
+//  Permiten manipular de distintas maneras archivos y caracteres. 
+// putchar y getchar están en uart.c
 FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
 
 void initialize(void){
 	//configurar los puertos
-	DDRD = 0x00;		// todos los puertos DDRD como entrada
-	DDRC = 0xff;	 	// todos los puertos DDRC como salida
+	DDRD = 0x00;			// todos los puertos DDRD como entrada
+	DDRC = 0xff;	 		// todos los puertos DDRC como salida
 	//OCR0A=16000000/(64*1000)-1=249
 	//OCR0A: carga el valor hasta el cual se quiere que llegue el registro TCNT0 el el modo CTN
 	OCR0A = 249;
@@ -50,38 +52,28 @@ void initialize(void){
 	//pone a CS02=0    CS01=1    CS00=1  activa  los dos primeros bits del registro TCCR0B
 	TCCR0B= 3;				//elige el presaclar a utilizar para obtener en cuanto tiempo se quiere que el registro TCNT0
 	//sea igual al registro OCR0A
-	// turn on clear-on-match
+	// enciende on clear-on-match
 	TCCR0A= (1<<WGM01) ;
 	Tiempo_espe=0;
-	PushState = NoPush;
-	state = 0; //progama inicia en 0	
+	PushState = NoPush;//Empujar el estado.
+	state = 0; //progama inicia en 0
+	
 	
 	uart_init();
 	stdout = stdin = stderr = &uart_str; //envias un mensaje a la puerta serial
 	fprintf(stdout,"Pulse el boton para encender el led \n\r  Atencion al Led o Sonido..! \n");
-	//crank up the ISRs
+	//poner en marcha los ISR
 	sei() ;
 
 }
+//*Interrupt Service Routine
+//llamado controlador de interrupciones
 ISR (TIMER0_COMPA_vect) {
 	if (time1>0) 	--time1;
 	if (time2>0)	--time2;  // decrementan los time si son mayores a cero
 	if (time3>0)	--time3;
 }
-int main(void){
-	initialize();
-	while(1){
-		if (time1==0){		//si time1 llega a 0
-			tarea1();		// se ejecuta la primera tarea
-		}
-		if (time2==0){		//si time2 llega a 0
-			tarea2();		//se ejecuta la segunda tarea
-		}
-		if(time3==0){		////si time3 llega a 0
-			tskdelay();		//se ejecuta la ultima tarea
-		}
-	}
-}
+
 
 void tarea1(void)
 begin
@@ -105,10 +97,28 @@ if (time>10000){				//si el tiempo  es mayor al tiempo aleatorio que se genero e
 }
 if (state==3)					// si el estado es igual a 3
 {
+	// escribe algunos datos en la bandera "written"
+	int tiempoAnteriror = eeprom_read_word((uint16_t*)eeprom_data);
+	fprintf(stdout,"Su tiempo Anterior es en ms: ");	// imprime un mesaje del tiempo anterrior  el ususario en pulsar el boton cuando el led esta encendido
+	fprintf(stdout,"%d \n\r", tiempoAnteriror) ;
+	
+	
 	eeprom_write_word((uint16_t*)eeprom_data,time);
-	fprintf(stdout,"Su tiempo es en ms: ");	// imrime un mesaje del tiempo que tarda el ususario en pulsar el boton cuando el led esta encendido
+	fprintf(stdout,"Su tiempo actual es: ");	// imprime un mesaje del tiempo que tarda el ususario en pulsar el boton cuando el led esta encendido
 	fprintf(stdout,"%d \n\r", eeprom_read_word((uint16_t*)eeprom_data)) ;
+	
+	
+	if (time<tiempoAnteriror)
+	{
+		fprintf(stdout,"FUISTES MAS RAPIDO, EXCELENTE");
+	} 
+	else
+	{
+		fprintf(stdout,"FUISTES MAS LENTO, ¡LO SIENTO!");
+	}
+	
 	fprintf(stdout,"\n Pulse para intentarlo de nuevo.. ! \n ");/// imprime un mensaje para volver a intentar de nuevo medir el tiempo de reaccion
+	
 	state=4;				// despues de imprimir los mejase se va al estado 4 donde todo se pone  0
 }
 if (state==4){				//si el estado es igual a 4
@@ -120,7 +130,7 @@ end
 
 void tarea2(void){
 	time2=1;     //reset the task timer
-	switch (PushState){
+	switch (PushState){//estado del boton
 		case NoPush:				//1
 		if (~PIND & 0x02){
 			PushState=MaybePush;
@@ -157,11 +167,27 @@ void tarea2(void){
 void tskdelay(void){
 	time3=1;
 	if (state==1){									// si el estado es igual a 1
-		nAleat=(9000-5000) + rand ()% 4000;       // se genera valores aleatorios  entre 4 y 8 seg y se entra al segudo if
+		nAleat=(9000-5000) + rand ()% 4000;       // se genera valores aleatorios  entre 4 y 8 seg y se entra al segundo if
 		if (Tiempo_espe< nAleat){					// si el tiempo de espera es menor al valor generado aleatoriamente
 			Tiempo_espe++;							// el tiempo de espara se incrementa
 			}else{										// si el tiempo de espera es igual o mayor al valor generado aleatoriamente
 			state=2;								// se va al estado que vale 2 de la maquina de estado que esta en la tarea 2
+		}
+	}
+}
+
+//programa principal
+int main(void){
+	initialize();
+	while(1){
+		if (time1==0){		//si time1 llega a 0
+			tarea1();		// se ejecuta la primera tarea
+		}
+		if (time2==0){		//si time2 llega a 0
+			tarea2();		//se ejecuta la segunda tarea
+		}
+		if(time3==0){		////si time3 llega a 0
+			tskdelay();		//se ejecuta la ultima tarea
 		}
 	}
 }
